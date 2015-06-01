@@ -13,6 +13,8 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/ttacon/chalk"
+	"github.com/codeskyblue/go-sh"
+
 )
 
 var Commands = []cli.Command{
@@ -56,24 +58,32 @@ func doPush(c *cli.Context) {
 	}
 
     type Snapshot struct {
-    	Uid          string  `json:"uid"`
-    	Timestamp    int64   `json:"timestamp"`
-    	CpuCount     int     `json:"cpuCount"`
-    	CpuLoadMin1  float64 `json:"cpuLoadMin1"`
-    	CpuLoadMin5  float64 `json:"cpuLoadMin5"`
-    	CpuLoadMin15 float64 `json:"cpuLoadMin15"`
-    	Memory       int     `json:"cpuLoadMin15"`
+    	Uid                    string  `json:"uid"`
+    	Timestamp              int64   `json:"timestamp"`
+    	CpuCount               int64   `json:"cpuCount"`
+    	CpuLoadMin1            float64 `json:"cpuLoadMin1"`
+    	CpuLoadMin5            float64 `json:"cpuLoadMin5"`
+    	CpuLoadMin15           float64 `json:"cpuLoadMin15"`
+    	MemoryTotal            int64   `json:"memoryTotal"`
+    	MemoryUsed             int64   `json:"memoryUsed"`
+    	MemoryFree             int64   `json:"memoryFree"`
+    	MemoryBuffersCacheUsed int64   `json:"memoryBuffersCacheUsed"`
+    	MemoryBuffersCacheFree int64   `json:"memoryBuffersCacheFree"`
+    	MemorySwapTotal        int64   `json:"memorySwapTotal"`
+    	MemorySwapUsed         int64   `json:"memorySwapUsed"`
+    	MemorySwapFree         int64   `json:"memorySwapFree"`
+
     }
 
 	time := time.Now().Unix()
 
-	cmd := exec.Command("/bin/cat", "/proc/loadavg")
+	cmd1, err := exec.Command("/bin/cat", "/proc/loadavg").Output()
 
-	// /usr/bin/free | /usr/bin/awk 'NR == 2 {printf $2 " " $3 " " $4 " "} NR == 3 {printf $3 " " $4 " "} NR ==4 {printf $2 " " $3 "  " $4}'
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	output, err := cmd.Output()
-
-	cpu := strings.Split(string(output), " ")
+	cpu := strings.Split(string(cmd1), " ")
 
 	cpuLoad1Min, err := strconv.ParseFloat(cpu[0], 64)
 	
@@ -92,12 +102,83 @@ func doPush(c *cli.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	cmd2, err := sh.Command("/usr/bin/free").Command("/usr/bin/awk", "NR == 2 {printf $2 \" \" $3 \" \" $4 \" \"} NR == 3 {printf $3 \" \" $4 \" \"} NR ==4 {printf $2 \" \" $3 \" \" $4}").Output()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	memory := strings.Split(string(cmd2), " ")
+
+	MemoryTotal, err := strconv.ParseInt(memory[0], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemoryUsed, err := strconv.ParseInt(memory[1], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemoryFree, err := strconv.ParseInt(memory[2], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemoryBuffersCacheUsed, err := strconv.ParseInt(memory[3], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemoryBuffersCacheFree, err := strconv.ParseInt(memory[4], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemorySwapTotal, err := strconv.ParseInt(memory[5], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemorySwapUsed, err := strconv.ParseInt(memory[6], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	MemorySwapFree, err := strconv.ParseInt(memory[7], 10, 64)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
     
-    s := Snapshot{strings.TrimSpace(string(key)), time, 8,  cpuLoad1Min, cpuLoad5Min, cpuLoad15Min}
+    snapshot := Snapshot{
+    	strings.TrimSpace(
+    		string(key)), 
+    		time, 8,  //TODO
+    		cpuLoad1Min, 
+    		cpuLoad5Min, 
+    		cpuLoad15Min, 
+    		MemoryTotal, 
+    		MemoryUsed, 
+    		MemoryFree, 
+    		MemoryBuffersCacheUsed, 
+    		MemoryBuffersCacheFree, 
+    		MemorySwapTotal, 
+    		MemorySwapUsed, 
+    		MemorySwapFree,
+    	}
 
-    b, err := json.Marshal(s)
+    output, err := json.Marshal(snapshot)
 
-    fmt.Print(string(b))
+    fmt.Print(string(output))
 }
 
 func doConfigure(c *cli.Context) {
