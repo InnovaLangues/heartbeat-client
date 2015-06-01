@@ -57,26 +57,34 @@ func doPush(c *cli.Context) {
 		log.Fatal(key)
 	}
 
-    type Snapshot struct {
-    	Uid                    string  `json:"uid"`
-    	Timestamp              int64   `json:"timestamp"`
-    	CpuCount               int     `json:"cpuCount"`
-    	CpuLoadMin1            float64 `json:"cpuLoadMin1"`
-    	CpuLoadMin5            float64 `json:"cpuLoadMin5"`
-    	CpuLoadMin15           float64 `json:"cpuLoadMin15"`
-    	MemoryTotal            int     `json:"memoryTotal"`
-    	MemoryUsed             int     `json:"memoryUsed"`
-    	MemoryFree             int     `json:"memoryFree"`
-    	MemoryBuffersCacheUsed int     `json:"memoryBuffersCacheUsed"`
-    	MemoryBuffersCacheFree int     `json:"memoryBuffersCacheFree"`
-    	MemorySwapTotal        int     `json:"memorySwapTotal"`
-    	MemorySwapUsed         int     `json:"memorySwapUsed"`
-    	MemorySwapFree         int     `json:"memorySwapFree"`
-    	DiskTotal              int     `json:"diskTotal"`
-    	DiskUsed               int     `json:"diskUsed"`
-    	DiskFree               int     `json:"diskFree"`
+    type Process struct {
+    	User string  `json:"user"`
+    	Comm string  `json:"comm"`
+    	Pcpu float64 `json:"pcpu"`
+    	Vsz  int     `json:"vsz"`
     }
-	
+
+    type Snapshot struct {
+    	Uid                    string    `json:"uid"`
+    	Timestamp              int64     `json:"timestamp"`
+    	CpuCount               int       `json:"cpuCount"`
+    	CpuLoadMin1            float64   `json:"cpuLoadMin1"`
+    	CpuLoadMin5            float64   `json:"cpuLoadMin5"`
+    	CpuLoadMin15           float64   `json:"cpuLoadMin15"`
+    	MemoryTotal            int       `json:"memoryTotal"`
+    	MemoryUsed             int       `json:"memoryUsed"`
+    	MemoryFree             int       `json:"memoryFree"`
+    	MemoryBuffersCacheUsed int       `json:"memoryBuffersCacheUsed"`
+    	MemoryBuffersCacheFree int       `json:"memoryBuffersCacheFree"`
+    	MemorySwapTotal        int       `json:"memorySwapTotal"`
+    	MemorySwapUsed         int       `json:"memorySwapUsed"`
+    	MemorySwapFree         int       `json:"memorySwapFree"`
+    	DiskTotal              int       `json:"diskTotal"`
+    	DiskUsed               int       `json:"diskUsed"`
+    	DiskFree               int       `json:"diskFree"`
+    	//Processes              []Process `json:"processes"`
+    }
+
 	timestamp := time.Now().Unix()
 
 	cmd1, err := exec.Command("/bin/grep", "-c", "^processor", "/proc/cpuinfo").Output()
@@ -198,27 +206,73 @@ func doPush(c *cli.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
-    
+
+	cmd5, err := sh.Command("/bin/ps", "axo", "user,comm,pcpu,vsz", "--sort", "-pcpu").Command("/usr/bin/awk", "BEGIN{OFS=\":\"} NR>1 {printf $1 \" \" $2 \" \" $3 \" \" $4 \"@@\" }").Output()
+
+    if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print(string(cmd5))
+
+	processLines := strings.Split(string(cmd5), "@@")
+
+	for _, processLine := range processLines {
+
+		process := strings.Split(string(processLine), " ")
+
+		user, err := strconv.Atoi(process[0])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		comm, err := strconv.Atoi(process[1])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		pcpu, err := strconv.Atoi(process[2])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		vsz, err := strconv.Atoi(process[3])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		process:= Process{
+			user,
+			comm,
+			pcpu,
+			vsz,
+		}
+	}
+
     snapshot := Snapshot{
-    	strings.TrimSpace(
-    		string(key)), 
-    		timestamp,
-    		cpuCount,
-    		cpuLoad1Min, 
-    		cpuLoad5Min, 
-    		cpuLoad15Min, 
-    		memoryTotal, 
-    		memoryUsed, 
-    		memoryFree, 
-    		memoryBuffersCacheUsed, 
-    		memoryBuffersCacheFree, 
-    		memorySwapTotal, 
-    		memorySwapUsed, 
-    		memorySwapFree,
-    		diskTotal, 
-    		diskUsed, 
-    		diskFree, 
-    	}
+    	strings.TrimSpace(string(key)), 
+		timestamp,
+		cpuCount,
+		cpuLoad1Min, 
+		cpuLoad5Min, 
+		cpuLoad15Min, 
+		memoryTotal, 
+		memoryUsed, 
+		memoryFree, 
+		memoryBuffersCacheUsed, 
+		memoryBuffersCacheFree, 
+		memorySwapTotal, 
+		memorySwapUsed, 
+		memorySwapFree,
+		diskTotal, 
+		diskUsed, 
+		diskFree, 
+		//processes,
+	}
 
     output, err := json.Marshal(snapshot)
 
