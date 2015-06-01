@@ -72,7 +72,9 @@ func doPush(c *cli.Context) {
     	MemorySwapTotal        int     `json:"memorySwapTotal"`
     	MemorySwapUsed         int     `json:"memorySwapUsed"`
     	MemorySwapFree         int     `json:"memorySwapFree"`
-
+    	DiskTotal              int     `json:"diskTotal"`
+    	DiskUsed               int     `json:"diskUsed"`
+    	DiskFree               int     `json:"diskFree"`
     }
 	
 	timestamp := time.Now().Unix()
@@ -170,6 +172,32 @@ func doPush(c *cli.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	cmd4, err := sh.Command("/bin/df", "--total").Command("/usr/bin/awk", "/total/ {printf $2 \" \" $3 \" \" $4}").Output()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	disk := strings.Split(string(cmd4), " ")
+
+	diskTotal, err := strconv.Atoi(disk[0])
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	diskUsed, err := strconv.Atoi(disk[1])
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	diskFree, err := strconv.Atoi(disk[2])
+	
+	if err != nil {
+		log.Fatal(err)
+	}
     
     snapshot := Snapshot{
     	strings.TrimSpace(
@@ -187,6 +215,9 @@ func doPush(c *cli.Context) {
     		memorySwapTotal, 
     		memorySwapUsed, 
     		memorySwapFree,
+    		diskTotal, 
+    		diskUsed, 
+    		diskFree, 
     	}
 
     output, err := json.Marshal(snapshot)
