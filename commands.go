@@ -25,8 +25,7 @@ var Commands = []cli.Command{
 var commandPush = cli.Command{
 	Name:  "push",
 	Usage: "Pushes json data to the hearbeat server",
-	Description: `This command pushes a json string to the hearbeat server
-`,
+	Description: `This command pushes a json string to the hearbeat server`,
 	Action: doPush,
 }
 
@@ -59,12 +58,12 @@ func doPush(c *cli.Context) {
     }
 
     type Snapshot struct {
-    	Uid                    string    `json:"uid"`
+    	UID                    string    `json:"uid"`
     	Timestamp              int64     `json:"timestamp"`
-    	CpuCount               int       `json:"cpuCount"`
-    	CpuLoadMin1            float64   `json:"cpuLoadMin1"`
-    	CpuLoadMin5            float64   `json:"cpuLoadMin5"`
-    	CpuLoadMin15           float64   `json:"cpuLoadMin15"`
+    	CPUCount               int       `json:"cpuCount"`
+    	CPULoadMin1            float64   `json:"cpuLoadMin1"`
+    	CPULoadMin5            float64   `json:"cpuLoadMin5"`
+    	CPULoadMin15           float64   `json:"cpuLoadMin15"`
     	MemoryTotal            int       `json:"memoryTotal"`
     	MemoryUsed             int       `json:"memoryUsed"`
     	MemoryFree             int       `json:"memoryFree"`
