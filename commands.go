@@ -117,7 +117,7 @@ func doPush(c *cli.Context) {
         log.Fatal(err)
     }
 
-    cmd3, err := sh.Command("/usr/bin/free").Command("/usr/bin/awk", "NR == 2 {printf $2 \" \" $3 \" \" $4 \" \"} NR == 3 {printf $3 \" \" $4 \" \"} NR ==4 {printf $2 \" \" $3 \" \" $4}").Output()
+    cmd3, err := sh.Command("/usr/bin/free", "-b").Command("/usr/bin/awk", "NR == 2 {printf $2 \" \" $3 \" \" $4 \" \"} NR == 3 {printf $3 \" \" $4 \" \"} NR ==4 {printf $2 \" \" $3 \" \" $4}").Output()
 
     if err != nil {
         log.Fatal(err)
@@ -173,7 +173,7 @@ func doPush(c *cli.Context) {
         log.Fatal(err)
     }
 
-    cmd4, err := sh.Command("/bin/df", "--total").Command("/usr/bin/awk", "/total/ {printf $2 \" \" $3 \" \" $4}").Output()
+    cmd4, err := sh.Command("/bin/df", "-B1", "--total").Command("/usr/bin/awk", "/total/ {printf $2 \" \" $3 \" \" $4}").Output()
 
     if err != nil {
         log.Fatal(err)
