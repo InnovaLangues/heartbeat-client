@@ -10,16 +10,16 @@ import (
     "time"
     "strings"
     "strconv"
+    "net/http"
+    "bytes"
 
 	"github.com/codegangsta/cli"
-	"github.com/ttacon/chalk"
 	"github.com/codeskyblue/go-sh"
 
 )
 
 var Commands = []cli.Command{
 	commandPush,
-	commandConfigure,
 }
 
 var commandPush = cli.Command{
@@ -28,14 +28,6 @@ var commandPush = cli.Command{
 	Description: `This command pushes a json string to the hearbeat server
 `,
 	Action: doPush,
-}
-
-var commandConfigure = cli.Command{
-	Name:  "configure",
-	Usage: "Configure the client UID",
-	Description: `This command configures the client (this) machines UID
-`,
-	Action: doConfigure,
 }
 
 func debug(v ...interface{}) {
@@ -52,6 +44,8 @@ func assert(err error) {
 
 func doPush(c *cli.Context) {
 	key, err := ioutil.ReadFile("/etc/heartbeat-client/heartbeat-client.key")
+
+	keyString := strings.TrimSpace(string(key))
     
     if err != nil {
 		log.Fatal(key)
@@ -82,7 +76,7 @@ func doPush(c *cli.Context) {
     	DiskTotal              int       `json:"diskTotal"`
     	DiskUsed               int       `json:"diskUsed"`
     	DiskFree               int       `json:"diskFree"`
-    	//Processes              []Process `json:"processes"`
+    	Processes              []Process `json:"processes"`
     }
 
 	timestamp := time.Now().Unix()
@@ -213,44 +207,39 @@ func doPush(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-	fmt.Print(string(cmd5))
-
 	processLines := strings.Split(string(cmd5), "@@")
+
+	//Pop last element
+	processLines = processLines[:len(processLines)-1]
+
+	processes := []Process {}
 
 	for _, processLine := range processLines {
 
-		process := strings.Split(string(processLine), " ")
+		processArray := strings.Split(string(processLine), " ")
 
-		user, err := strconv.Atoi(process[0])
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		comm, err := strconv.Atoi(process[1])
+		pcpuFloat, err := strconv.ParseFloat(processArray[2], 64)	
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		pcpu, err := strconv.Atoi(process[2])
+		vszInt, err := strconv.Atoi(processArray[3])
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		vsz, err := strconv.Atoi(process[3])
+		user, comm, pcpu, vsz := processArray[0], processArray[1], pcpuFloat, vszInt
 
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		process:= Process{
+		process := Process{
 			user,
 			comm,
 			pcpu,
 			vsz,
 		}
+
+		processes = append(processes, process)
 	}
 
     snapshot := Snapshot{
@@ -271,15 +260,36 @@ func doPush(c *cli.Context) {
 		diskTotal, 
 		diskUsed, 
 		diskFree, 
-		//processes,
+		processes,
 	}
 
     output, err := json.Marshal(snapshot)
 
-    fmt.Print(string(output))
-}
+    url := "http://heartbeat.innovalangues.net/api/snapshot/" + keyString
 
-func doConfigure(c *cli.Context) {
+    var jsonStr = []byte(string(output) )
+    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+    req.Header.Set("Content-Type", "application/json")
 
-	fmt.Println(chalk.Bold.TextStyle("What is the server UID ?"))
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    if resp.Status != "200 OK" {
+	    fmt.Println("Your request could not be processesd \n")
+	    fmt.Println("URL:")
+	    fmt.Println(url + "\n")
+	    fmt.Println("Payload:")
+	    fmt.Println(string(output),"\n")
+	    fmt.Println("response Status:")
+	    fmt.Println(resp.Status,"\n")
+	    fmt.Println("response Headers:")
+	    fmt.Println(resp.Header,"\n")
+	    fmt.Println("response Body:")
+	    body, _ := ioutil.ReadAll(resp.Body)
+	    fmt.Println(string(body),"\n")
+    }
 }
